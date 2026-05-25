@@ -13,8 +13,6 @@
 <p>A battle-tested, A–Z deployment guide built from real production experience.<br/>
 Covers every issue, every fix, and every decision made along the way.</p>
 
-**Stack: NestJS API · Next.js Client · Next.js Admin Dashboard**
-
 </div>
 
 ---
@@ -50,7 +48,7 @@ Push to main branch
         │
         ▼
 GitHub Actions
-  ├── Builds Docker image (with NEXT_PUBLIC_ vars baked in)
+  ├── Builds Docker image 
   ├── Pushes to Docker Hub
   └── SSHs into VPS
               │
@@ -167,7 +165,7 @@ coverage
 services:
   api:
     build: .
-    container_name: bernie-api
+    container_name: backend-api
     restart: unless-stopped
     env_file:
       - .env
@@ -182,7 +180,7 @@ services:
 ```bash
 docker compose up --build
 docker ps
-docker logs bernie-api
+docker logs backend-api
 # should see: Application is running on: http://localhost:5000
 ```
 
@@ -190,8 +188,8 @@ docker logs bernie-api
 
 ```bash
 docker login
-docker build -t bdcalling10/bernie-backend:latest .
-docker push bdcalling10/bernie-backend:latest
+docker build -t username/your_docker_image:latest .
+docker push username/your_docker_image:latest
 ```
 
 ---
@@ -205,10 +203,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',   // REQUIRED for Docker
-  images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'res.cloudinary.com' },
-    ],
+
+..........
   },
 };
 
@@ -294,9 +290,9 @@ services:
 docker build \
   --build-arg NEXT_PUBLIC_BACKEND_API_URL=https://api.yourdomain.com/api/v1 \
   --build-arg NEXTAUTH_URL=https://admin.yourdomain.com \
-  -t ahmmed009/admin-dashboard:latest .
+  -t username/your_docker_image:latest .
 
-docker push ahmmed009/admin-dashboard:latest
+docker push username/your_docker_image:latest
 ```
 
 ---
@@ -310,6 +306,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',   // REQUIRED for Docker
+
+  ...........
 };
 
 export default nextConfig;
@@ -394,9 +392,9 @@ services:
 docker build \
   --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.yourdomain.com/api/v1 \
   --build-arg NEXTAUTH_URL=https://yourdomain.com \
-  -t amitdev17/barnie-client:latest .
+  -t username/your_docker_image:latest .
 
-docker push amitdev17/barnie-client:latest
+docker push username/your_docker_image:latest
 ```
 
 ---
@@ -476,7 +474,7 @@ cd /var/www
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 docker ps
-docker logs api
+docker logs api/admin/client
 ```
 
 ### Step 7 — Configure Nginx
