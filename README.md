@@ -39,9 +39,9 @@ Covers every issue, every fix, and every decision made along the way.</p>
 
 | Repo | Tech | Port | Docker Hub Image |
 |---|---|---|---|
-| `bernie-faradji-backend` | NestJS + TypeScript + MongoDB | 5000 | `bdcalling10/bernie-backend` |
-| `delivaryboy-dashboard` | Next.js 15 + React 19 (Admin) | 3001 | `ahmmed009/admin-dashboard` |
-| `barnie` | Next.js 16 + React 19 (Client) | 3000 | `amitdev17/barnie-client` |
+| `project-backend` | NestJS + TypeScript + MongoDB | 5000 | `bdcalling10/your-backend` |
+| `project-dashboard` | Next.js | 3001 | `bdcalling10/your-dashboard` |
+| `project-website` | Next.js | 3000 | `bdcalling10/your-client` |
 
 ### How Everything Connects
 
