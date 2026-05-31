@@ -37,7 +37,7 @@ Covers every issue, every fix, and every decision made along the way.</p>
 
 | Repo | Tech | Port | Docker Hub Image |
 |---|---|---|---|
-| `project-backend` | NestJS + TypeScript + MongoDB | 5000 | `bdcalling10/your-backend` |
+| `project-backend` | NestJS | 5000 | `bdcalling10/your-backend` |
 | `project-dashboard` | Next.js | 3001 | `bdcalling10/your-dashboard` |
 | `project-website` | Next.js | 3000 | `bdcalling10/your-client` |
 
