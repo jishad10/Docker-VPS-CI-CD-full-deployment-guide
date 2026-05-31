@@ -564,7 +564,7 @@ cat ~/.ssh/id_ed25519.pub   # public  → add to VPS
 cat ~/.ssh/id_ed25519       # private → add to GitHub Secrets
 ```
 
-### Step 2 — Add Public Key to VPS
+### Step 2 — Add Public Key to VPS(root)
 ```bash
 nano ~/.ssh/authorized_keys
 # paste public key → save
