@@ -14,8 +14,6 @@
 <p>A battle-tested, A to Z deployment guide built from real production experience.<br/>
 Covers every issue, every fix, and every decision made along the way.</p>
 
-**Stack: NestJS API · Next.js Client · Next.js Admin Dashboard**
-
 </div>
 
 ---
