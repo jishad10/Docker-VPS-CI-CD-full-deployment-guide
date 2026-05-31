@@ -10,14 +10,16 @@
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)](https://nginx.org/)
 
-<p>A battle-tested, A–Z deployment guide built from real production experience.<br/>
+<p>A battle-tested, A to Z deployment guide built from real production experience.<br/>
 Covers every issue, every fix, and every decision made along the way.</p>
+
+**Stack: NestJS API · Next.js Client · Next.js Admin Dashboard**
 
 </div>
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Project Overview](#-project-overview)
 - [The 3-Phase Procedure](#-the-3-phase-procedure)
@@ -25,21 +27,21 @@ Covers every issue, every fix, and every decision made along the way.</p>
 - [Phase 2 — VPS Deploy](#-phase-2--vps-deploy)
 - [Phase 3 — GitHub Actions CI/CD](#-phase-3--github-actions-cicd)
 - [Production docker-compose.prod.yml](#-production-docker-composeprodyml)
-- [Real Issues & Fixes](#-real-issues--fixes)
+- [Real Issues and Fixes](#-real-issues--fixes)
 - [Quick Reference](#-quick-reference)
 - [DevOps Roadmap](#-devops-roadmap)
 
 ---
 
-## 🗺 Project Overview
+## Project Overview
 
 3 separate repositories, each independently dockerized and deployed:
 
 | Repo | Tech | Port | Docker Hub Image |
 |---|---|---|---|
-| `project-backend` | NestJS | 5000 | `bdcalling10/your-backend` |
-| `project-dashboard` | Next.js | 3001 | `bdcalling10/your-dashboard` |
-| `project-website` | Next.js | 3000 | `bdcalling10/your-client` |
+| `project-backend` | NestJS + TypeScript + MongoDB | 5000 | `username/your-backend` |
+| `project-dashboard` | Next.js Admin Dashboard | 3001 | `username/your-dashboard` |
+| `project-website` | Next.js Client Website | 3000 | `username/your-client` |
 
 ### How Everything Connects
 
@@ -48,8 +50,8 @@ Push to main branch
         │
         ▼
 GitHub Actions
-  ├── Builds Docker image 
-  ├── Pushes to Docker Hub
+  ├── Builds Docker image (NEXT_PUBLIC_ vars baked in at build time)
+  ├── Pushes image to Docker Hub
   └── SSHs into VPS
               │
               ▼
@@ -63,26 +65,26 @@ GitHub Actions
 
 ```
 /root/
-├── deploy-api.sh         ← deploy script for api
-├── deploy-admin.sh       ← deploy script for admin
-└── deploy-client.sh      ← deploy script for client
+├── deploy-api.sh       ← CI/CD deploy script — called by GitHub Actions on every push to main
+├── deploy-admin.sh     ← CI/CD deploy script — called by GitHub Actions on every push to main
+└── deploy-client.sh    ← CI/CD deploy script — called by GitHub Actions on every push to main
 
 /var/www/
-├── docker-compose.prod.yml   ← ONE file, manages all 3 containers
+├── docker-compose.prod.yml   ← ONE file manages all 3 containers
 ├── api/
-│   ├── .env                  ← api environment variables
-│   └── uploads/              ← multer file uploads (persistent)
+│   ├── .env                  ← api environment variables (never in git)
+│   └── uploads/              ← multer file uploads (persistent across deploys)
 ├── admin/
-│   └── .env                  ← admin environment variables
+│   └── .env                  ← admin environment variables (never in git)
 └── client/
-    └── .env                  ← client environment variables
+    └── .env                  ← client environment variables (never in git)
 ```
 
-> ⚠️ **Key Rule:** No application code lives on the VPS. Only `.env` files, `uploads/`, and `docker-compose.prod.yml`. Everything else is in Docker images on Docker Hub.
+> **Key Rule:** No application code lives on the VPS. Only `.env` files, `uploads/`, and `docker-compose.prod.yml`. Everything else is in Docker images on Docker Hub.
 
 ---
 
-## 🔄 The 3-Phase Procedure
+## The 3-Phase Procedure
 
 ```
 PHASE 1                    PHASE 2                    PHASE 3
@@ -91,15 +93,15 @@ Dockerize locally    →     VPS Deploy           →     GitHub Actions CI/CD
 
 • Dockerfile               • Install Docker           • SSH key setup
 • .dockerignore            • Create .env files        • GitHub secrets
-• docker-compose.yml       • docker-compose.prod      • deploy scripts
-• Test locally             • Pull & run images        • workflow files
-• Build & push             • Nginx + SSL + Cron       • Auto deploy
+• docker-compose.yml       • docker-compose.prod      • deploy scripts (VPS)
+• Test locally             • Pull and run images      • workflow files (repo)
+• Build and push           • Nginx + SSL + Cron       • Auto deploy on push
   to Docker Hub
 ```
 
 ---
 
-## 🐳 Phase 1 — Dockerize Locally
+## Phase 1 — Dockerize Locally
 
 > All commands run on your **local machine**.
 
@@ -107,7 +109,8 @@ Dockerize locally    →     VPS Deploy           →     GitHub Actions CI/CD
 
 ### NestJS API
 
-#### `Dockerfile`
+<details>
+<summary><b>Dockerfile — click to expand</b></summary>
 
 ```dockerfile
 # ---- Stage 1: Build ----
@@ -131,15 +134,20 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
+# Create uploads folder for multer disk storage
 RUN mkdir -p uploads
 
 EXPOSE 5000
 CMD ["node", "dist/src/main.js"]
 ```
 
-> 💡 Entry point is `dist/src/main.js` confirmed from `"start:prod": "node dist/src/main.js"` in package.json. Verify with: `docker exec -it api sh` then `ls dist/src/`
+> Entry point is `dist/src/main.js` confirmed from `"start:prod": "node dist/src/main.js"` in package.json.
+> Verify with: `docker exec -it api sh` then `ls dist/src/`
 
-#### `.dockerignore`
+</details>
+
+<details>
+<summary><b>.dockerignore — click to expand</b></summary>
 
 ```
 node_modules
@@ -159,7 +167,10 @@ test
 coverage
 ```
 
-#### `docker-compose.yml` (local dev only)
+</details>
+
+<details>
+<summary><b>docker-compose.yml (local dev only) — click to expand</b></summary>
 
 ```yaml
 services:
@@ -175,6 +186,8 @@ services:
       - ./uploads:/app/uploads
 ```
 
+</details>
+
 #### Test Locally
 
 ```bash
@@ -184,46 +197,48 @@ docker logs backend-api
 # should see: Application is running on: http://localhost:5000
 ```
 
-#### Build & Push to Docker Hub
+#### Build and Push to Docker Hub
 
 ```bash
 docker login
-docker build -t username/your_docker_image:latest .
-docker push username/your_docker_image:latest
+docker build -t username/your-backend:latest .
+docker push username/your-backend:latest
 ```
 
 ---
 
 ### Next.js Admin Dashboard
 
-#### ⚠️ Update `next.config.ts` First
+> **Before creating the Dockerfile** — add `output: 'standalone'` to `next.config.ts`. Without this the Docker image will fail to start:
 
 ```ts
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',   // REQUIRED for Docker
-
-..........
-  },
+  // ...your other config
 };
 
 export default nextConfig;
 ```
 
-#### `Dockerfile`
+<details>
+<summary><b>Dockerfile — click to expand</b></summary>
 
 ```dockerfile
+# Stage 1 — install dependencies
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+# Stage 2 — build
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# NEXT_PUBLIC_ vars MUST be baked in at BUILD time — not runtime
 ARG NEXT_PUBLIC_BACKEND_API_URL
 ENV NEXT_PUBLIC_BACKEND_API_URL=$NEXT_PUBLIC_BACKEND_API_URL
 
@@ -233,6 +248,7 @@ ENV NEXTAUTH_URL=$NEXTAUTH_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
+# Stage 3 — production (small final image)
 FROM node:22-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
@@ -251,7 +267,10 @@ EXPOSE 3001
 CMD ["node", "server.js"]
 ```
 
-#### `.dockerignore`
+</details>
+
+<details>
+<summary><b>.dockerignore — click to expand</b></summary>
 
 ```
 node_modules
@@ -266,7 +285,10 @@ README.md
 .eslintrc*
 ```
 
-#### `docker-compose.yml` (local dev only)
+</details>
+
+<details>
+<summary><b>docker-compose.yml (local dev only) — click to expand</b></summary>
 
 ```yaml
 services:
@@ -284,48 +306,53 @@ services:
       - "3001:3001"
 ```
 
-#### Build & Push to Docker Hub
+</details>
+
+#### Build and Push to Docker Hub
 
 ```bash
 docker build \
   --build-arg NEXT_PUBLIC_BACKEND_API_URL=https://api.yourdomain.com/api/v1 \
   --build-arg NEXTAUTH_URL=https://admin.yourdomain.com \
-  -t username/your_docker_image:latest .
+  -t username/your-dashboard:latest .
 
-docker push username/your_docker_image:latest
+docker push username/your-dashboard:latest
 ```
 
 ---
 
-### Next.js Client
+### Next.js Client Website
 
-#### ⚠️ Update `next.config.ts` First
+> **Before creating the Dockerfile** — add `output: 'standalone'` to `next.config.ts`. Without this the Docker image will fail to start:
 
 ```ts
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',   // REQUIRED for Docker
-
-  ...........
+  // ...your other config
 };
 
 export default nextConfig;
 ```
 
-#### `Dockerfile`
+<details>
+<summary><b>Dockerfile — click to expand</b></summary>
 
 ```dockerfile
+# Stage 1 — install dependencies
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+# Stage 2 — build
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# NEXT_PUBLIC_ vars MUST be baked in at BUILD time — not runtime
 ARG NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 
@@ -335,6 +362,7 @@ ENV NEXTAUTH_URL=$NEXTAUTH_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
+# Stage 3 — production (small final image)
 FROM node:22-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
@@ -353,7 +381,10 @@ EXPOSE 3000
 CMD ["node", "server.js"]
 ```
 
-#### `.dockerignore`
+</details>
+
+<details>
+<summary><b>.dockerignore — click to expand</b></summary>
 
 ```
 node_modules
@@ -368,7 +399,10 @@ README.md
 .eslintrc*
 ```
 
-#### `docker-compose.yml` (local dev only)
+</details>
+
+<details>
+<summary><b>docker-compose.yml (local dev only) — click to expand</b></summary>
 
 ```yaml
 services:
@@ -386,22 +420,24 @@ services:
       - "3000:3000"
 ```
 
-#### Build & Push to Docker Hub
+</details>
+
+#### Build and Push to Docker Hub
 
 ```bash
 docker build \
   --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.yourdomain.com/api/v1 \
   --build-arg NEXTAUTH_URL=https://yourdomain.com \
-  -t username/your_docker_image:latest .
+  -t username/your-client:latest .
 
-docker push username/your_docker_image:latest
+docker push username/your-client:latest
 ```
 
 ---
 
-## 🖥️ Phase 2 — VPS Deploy
+## Phase 2 — VPS Deploy
 
-> All commands run on your **VPS** unless marked `[LOCAL]`.
+> All commands run on your **VPS** unless marked LOCAL.
 
 ### Step 1 — SSH + Update
 ```bash
@@ -447,7 +483,6 @@ ADMIN_URL=https://admin.yourdomain.com
 nano /var/www/admin/.env
 ```
 ```env
-NEXT_PUBLIC_BACKEND_API_URL=https://api.yourdomain.com/api/v1
 NEXTAUTH_SECRET=your_secret
 NEXTAUTH_URL=https://admin.yourdomain.com
 ```
@@ -460,34 +495,49 @@ NEXTAUTH_SECRET=your_secret
 NEXTAUTH_URL=https://yourdomain.com
 ```
 
-> 🔒 `.env` files never in git, never inside Docker images. Created manually once, stay permanently.
-> `NEXT_PUBLIC_` vars are baked into the image — no need in VPS `.env`.
+> `.env` files are never in git and never inside Docker images. Created manually once, stay permanently.
+> `NEXT_PUBLIC_` vars are already baked into the image at build time — no need to add them here.
 
 ### Step 5 — Login to Docker Hub on VPS
 ```bash
 docker login
 ```
 
-### Step 6 — Pull & Start All Containers
+### Step 6 — Place docker-compose.prod.yml on VPS
+```bash
+nano /var/www/docker-compose.prod.yml
+# paste content from the Production section below
+```
+
+### Step 7 — Pull and Start All Containers
 ```bash
 cd /var/www
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 docker ps
-docker logs api/admin/client
+docker logs api
+docker logs admin
+docker logs client
 ```
 
-### Step 7 — Configure Nginx
+### Step 8 — Configure Nginx
 ```bash
 sudo apt install nginx -y
 ```
 
-**API:**
+<details>
+<summary><b>Nginx config for API — click to expand</b></summary>
+
+```bash
+sudo nano /etc/nginx/sites-available/api
+```
+
 ```nginx
 server {
     listen 80;
     server_name api.yourdomain.com;
     client_max_body_size 100M;
+
     location / {
         proxy_pass http://localhost:5000;
         proxy_http_version 1.1;
@@ -499,12 +549,21 @@ server {
 }
 ```
 
-**Admin:**
+</details>
+
+<details>
+<summary><b>Nginx config for Admin — click to expand</b></summary>
+
+```bash
+sudo nano /etc/nginx/sites-available/admin
+```
+
 ```nginx
 server {
     listen 80;
     server_name admin.yourdomain.com;
     client_max_body_size 100M;
+
     location / {
         proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
@@ -516,12 +575,21 @@ server {
 }
 ```
 
-**Client:**
+</details>
+
+<details>
+<summary><b>Nginx config for Client — click to expand</b></summary>
+
+```bash
+sudo nano /etc/nginx/sites-available/client
+```
+
 ```nginx
 server {
     listen 80;
     server_name yourdomain.com www.yourdomain.com;
     client_max_body_size 100M;
+
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -533,6 +601,8 @@ server {
 }
 ```
 
+</details>
+
 ```bash
 sudo ln -s /etc/nginx/sites-available/api    /etc/nginx/sites-enabled/
 sudo ln -s /etc/nginx/sites-available/admin  /etc/nginx/sites-enabled/
@@ -540,7 +610,7 @@ sudo ln -s /etc/nginx/sites-available/client /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl restart nginx
 ```
 
-### Step 8 — SSL + Auto-Renew
+### Step 9 — SSL + Auto-Renew
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
 certbot --nginx -d api.yourdomain.com
@@ -550,78 +620,109 @@ certbot --nginx -d yourdomain.com -d www.yourdomain.com
 sudo apt install cron -y
 sudo systemctl enable cron && sudo systemctl start cron
 crontab -e
-# Add: 0 3 * * * certbot renew --quiet
+# Add this line:
+0 3 * * * certbot renew --quiet
 ```
 
 ---
 
-## ⚙️ Phase 3 — GitHub Actions CI/CD
+## Phase 3 — GitHub Actions CI/CD
 
-### Step 1 — Generate SSH Key `[LOCAL]`
+> After this phase, every `git push` to `main` automatically builds, pushes, and deploys.
+
+### Step 1 — Generate SSH Key (LOCAL)
 ```bash
 ssh-keygen -t ed25519 -C "youremail@example.com"
-cat ~/.ssh/id_ed25519.pub   # public  → add to VPS
-cat ~/.ssh/id_ed25519       # private → add to GitHub Secrets
+cat ~/.ssh/id_ed25519.pub   # public key  → add to VPS
+cat ~/.ssh/id_ed25519       # private key → add to GitHub Secrets
 ```
 
-### Step 2 — Add Public Key to VPS(root)
+### Step 2 — Add Public Key to VPS
 ```bash
 nano ~/.ssh/authorized_keys
-# paste public key → save
+# paste public key content → Ctrl+X → Y → Enter
 ```
 
-### Step 3 — GitHub Secrets (all 3 repos)
+### Step 3 — Add GitHub Secrets (do for all 3 repos)
+
+Go to: **GitHub repo → Settings → Secrets and variables → Actions → New repository secret**
 
 | Secret | Value |
 |---|---|
-| `SSH_HOST` | Run `curl -4 ifconfig.me` on VPS — use IPv4! |
+| `SSH_HOST` | Run `curl -4 ifconfig.me` on VPS — must be IPv4 |
 | `SSH_USER` | `root` |
-| `SSH_KEY` | Full content of `id_ed25519` including BEGIN/END lines |
+| `SSH_KEY` | Full content of `id_ed25519` including BEGIN and END lines |
 | `DOCKER_USERNAME` | Your Docker Hub username |
-| `DOCKER_PASSWORD` | Docker Hub PAT (recommended over password) |
+| `DOCKER_PASSWORD` | Docker Hub PAT — recommended over password |
 
-### Step 4 — Deploy Scripts on VPS
+> Use `curl -4 ifconfig.me` not `curl ifconfig.me`. Some VPS providers return IPv6 by default which causes SSH timeout in GitHub Actions.
+
+### Step 4 — Create Deploy Scripts on VPS
+
+These scripts live in `/root/` and are called automatically by GitHub Actions on every push to `main`:
+
+<details>
+<summary><b>~/deploy-api.sh — click to expand</b></summary>
 
 ```bash
 nano ~/deploy-api.sh
 ```
+
 ```bash
 set -e
 echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-docker pull bdcalling10/bernie-backend:latest
+docker pull username/your-backend:latest
 docker compose -f /var/www/docker-compose.prod.yml up -d --no-deps api
 docker image prune -f
 ```
 
+</details>
+
+<details>
+<summary><b>~/deploy-admin.sh — click to expand</b></summary>
+
 ```bash
 nano ~/deploy-admin.sh
 ```
+
 ```bash
 set -e
 echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-docker pull ahmmed009/admin-dashboard:latest
+docker pull username/your-dashboard:latest
 docker compose -f /var/www/docker-compose.prod.yml up -d --no-deps admin
 docker image prune -f
 ```
 
+</details>
+
+<details>
+<summary><b>~/deploy-client.sh — click to expand</b></summary>
+
 ```bash
 nano ~/deploy-client.sh
 ```
+
 ```bash
 set -e
 echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-docker pull amitdev17/barnie-client:latest
+docker pull username/your-client:latest
 docker compose -f /var/www/docker-compose.prod.yml up -d --no-deps client
 docker image prune -f
 ```
+
+</details>
 
 ```bash
 chmod +x ~/deploy-api.sh ~/deploy-admin.sh ~/deploy-client.sh
 ```
 
-### Step 5 — Workflow Files
+### Step 5 — Create Workflow Files in Each Repo
 
-**api-repo `.github/workflows/deploy.yml`**
+Create `.github/workflows/deploy.yml` in each repo:
+
+<details>
+<summary><b>api-repo — .github/workflows/deploy.yml — click to expand</b></summary>
+
 ```yaml
 name: Deploy API
 
@@ -632,6 +733,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -644,7 +746,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: bdcalling10/bernie-backend:latest
+          tags: username/your-backend:latest
 
       - uses: appleboy/ssh-action@v1
         with:
@@ -658,7 +760,11 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 ```
 
-**admin-repo `.github/workflows/deploy.yml`**
+</details>
+
+<details>
+<summary><b>admin-repo — .github/workflows/deploy.yml — click to expand</b></summary>
+
 ```yaml
 name: Deploy Admin
 
@@ -669,6 +775,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -684,7 +791,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_BACKEND_API_URL=https://api.yourdomain.com/api/v1
             NEXTAUTH_URL=https://admin.yourdomain.com
-          tags: ahmmed009/admin-dashboard:latest
+          tags: username/your-dashboard:latest
 
       - uses: appleboy/ssh-action@v1
         with:
@@ -698,7 +805,11 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 ```
 
-**client-repo `.github/workflows/deploy.yml`**
+</details>
+
+<details>
+<summary><b>client-repo — .github/workflows/deploy.yml — click to expand</b></summary>
+
 ```yaml
 name: Deploy Client
 
@@ -709,6 +820,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -724,7 +836,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=https://api.yourdomain.com/api/v1
             NEXTAUTH_URL=https://yourdomain.com
-          tags: amitdev17/barnie-client:latest
+          tags: username/your-client:latest
 
       - uses: appleboy/ssh-action@v1
         with:
@@ -738,16 +850,18 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 ```
 
+</details>
+
 ---
 
-## 📦 Production docker-compose.prod.yml
+## Production docker-compose.prod.yml
 
 Lives at `/var/www/docker-compose.prod.yml` — never in any repo:
 
 ```yaml
 services:
   api:
-    image: bdcalling10/bernie-backend:latest
+    image: username/your-backend:latest
     container_name: api
     restart: always
     env_file: /var/www/api/.env
@@ -759,7 +873,7 @@ services:
       - app-network
 
   admin:
-    image: ahmmed009/admin-dashboard:latest
+    image: username/your-dashboard:latest
     container_name: admin
     restart: always
     env_file: /var/www/admin/.env
@@ -769,7 +883,7 @@ services:
       - app-network
 
   client:
-    image: amitdev17/barnie-client:latest
+    image: username/your-client:latest
     container_name: client
     restart: always
     env_file: /var/www/client/.env
@@ -785,16 +899,17 @@ networks:
 
 ---
 
-## 🔥 Real Issues & Fixes
+## Real Issues and Fixes
 
-These are real issues encountered during this exact deployment:
+These are real issues encountered and solved during this production deployment:
 
-### 1. `NEXT_PUBLIC_` variables showing as `undefined`
+### 1. NEXT_PUBLIC_ variables showing as undefined
+
 **Symptom:** API calls hitting `https://yourdomain.com/undefined/endpoint`
 
-**Cause:** `NEXT_PUBLIC_` vars are baked at **build time**, not runtime. Passing via `env_file` on VPS does nothing.
+**Cause:** `NEXT_PUBLIC_` vars are baked at build time, not runtime. Passing via `env_file` on VPS does nothing for these vars.
 
-**Fix:** Use `ARG` + `ENV` in Dockerfile builder stage:
+**Fix:** Use `ARG` and `ENV` in Dockerfile builder stage:
 ```dockerfile
 ARG NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
@@ -806,14 +921,15 @@ docker build --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.yourdomain.com/api
 ---
 
 ### 2. CORS error for admin but not client
-**Cause:** Backend only allowed `FRONTEND_URL` (client domain). Admin domain was blocked.
 
-**Fix — `app.config.ts`:**
+**Cause:** Backend CORS only allowed `FRONTEND_URL`. Admin domain had no access.
+
+**Fix — app.config.ts:**
 ```ts
 adminUrl: process.env.ADMIN_URL || '*',
 ```
 
-**Fix — `main.ts`:**
+**Fix — main.ts:**
 ```ts
 app.enableCors({
   origin: [
@@ -824,7 +940,7 @@ app.enableCors({
 });
 ```
 
-**Fix — `/var/www/api/.env`:**
+**Fix — /var/www/api/.env:**
 ```env
 FRONTEND_URL=https://yourdomain.com
 ADMIN_URL=https://admin.yourdomain.com
@@ -833,37 +949,41 @@ ADMIN_URL=https://admin.yourdomain.com
 ---
 
 ### 3. Certbot failing — no valid A records
+
 **Symptom:** `no valid A records found for yourdomain.com`
 
-**Cause:** DNS A records for root domain not added — only subdomains configured.
+**Cause:** DNS A records for root domain not added — only subdomains were configured.
 
-**Fix:** Add in DNS panel:
+**Fix:** Add missing records in your DNS panel:
+
 | Type | Name | Value |
 |---|---|---|
-| A | `@` | VPS IP |
-| A | `www` | VPS IP |
-| A | `api` | VPS IP |
-| A | `admin` | VPS IP |
+| A | `@` | Your VPS IP |
+| A | `www` | Your VPS IP |
+| A | `api` | Your VPS IP |
+| A | `admin` | Your VPS IP |
 
-Wait 5–30 min, then re-run certbot.
+Wait 5 to 30 minutes for propagation then re-run certbot.
 
 ---
 
 ### 4. GitHub Actions SSH timeout
+
 **Symptom:** `dial tcp ***:22: i/o timeout`
 
-**Cause:** `SSH_HOST` had IPv6 address. GitHub Actions connects via IPv4 only.
+**Cause:** `SSH_HOST` secret had IPv6 address. GitHub Actions connects via IPv4 only.
 
 **Fix:**
 ```bash
-curl -4 ifconfig.me   # note the -4 flag
+curl -4 ifconfig.me
 ```
-Update `SSH_HOST` secret with IPv4 address.
+Update `SSH_HOST` secret with this IPv4 address.
 
 ---
 
-### 5. `NEXTAUTH_URL` wrong in production
-**Symptom:** Login redirects going to `localhost`.
+### 5. NEXTAUTH_URL wrong in production
+
+**Symptom:** Login redirects going to localhost instead of real domain.
 
 **Cause:** `NEXTAUTH_URL=http://localhost:3000` copied from local dev into VPS `.env`.
 
@@ -872,39 +992,60 @@ Update `SSH_HOST` secret with IPv4 address.
 ARG NEXTAUTH_URL
 ENV NEXTAUTH_URL=$NEXTAUTH_URL
 ```
-Pass via `--build-arg NEXTAUTH_URL=https://yourdomain.com` when building.
+```bash
+docker build --build-arg NEXTAUTH_URL=https://yourdomain.com .
+```
 
 ---
 
 ### 6. Docker daemon not running (Windows)
+
 **Symptom:** `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine`
 
-**Fix:** Open Docker Desktop, wait for whale icon 🐳 to stop animating.
+**Fix:** Open Docker Desktop from Start Menu. Wait for the whale icon in the taskbar to stop animating before running any Docker commands.
 
 ---
 
-### 7. `version` attribute warning in compose
-**Symptom:** `the attribute version is obsolete`
+### 7. version attribute warning in compose
 
-**Fix:** Remove `version: '3.9'` line. Modern Docker Compose doesn't need it.
+**Symptom:** `the attribute version is obsolete, it will be ignored`
+
+**Fix:** Remove the `version: '3.9'` line from all compose files. Modern Docker Compose does not need it.
 
 ---
 
-## 📖 Quick Reference
+## Quick Reference
 
 ### Changing ENV Variables
 
-| Var type | Action needed |
-|---|---|
-| Regular vars (`MONGO_URI`, `JWT_SECRET`) | Edit `/var/www/api/.env` on VPS → restart container |
-| `NEXT_PUBLIC_` vars | Rebuild image → push → pull on VPS |
-| `NEXTAUTH_URL` | Rebuild image → push → pull on VPS |
+| Var type | Where to change | Action needed |
+|---|---|---|
+| Regular vars (MONGO_URI, JWT_SECRET) | Edit `/var/www/api/.env` on VPS | Restart container only |
+| `NEXT_PUBLIC_` vars | Update `build-args` in workflow file | Push to main — CI/CD rebuilds automatically |
+| `NEXTAUTH_URL` | Update `build-args` in workflow file | Push to main — CI/CD rebuilds automatically |
 
-### Restart a Single Container
+### Container Management
+
 ```bash
+# Start or restart all containers
+docker compose -f /var/www/docker-compose.prod.yml up -d
+
+# Restart a single container
 docker compose -f /var/www/docker-compose.prod.yml up -d --no-deps api
 docker compose -f /var/www/docker-compose.prod.yml up -d --no-deps admin
 docker compose -f /var/www/docker-compose.prod.yml up -d --no-deps client
+
+# Quick restart without pulling new image
+docker compose -f /var/www/docker-compose.prod.yml restart
+```
+
+### Check Logs
+
+```bash
+docker logs api --tail 50
+docker logs admin --tail 50
+docker logs client --tail 50
+docker logs api -f        # live logs
 ```
 
 ### Docker vs PM2 Commands
@@ -915,37 +1056,33 @@ docker compose -f /var/www/docker-compose.prod.yml up -d --no-deps client
 | `pm2 logs api` | `docker logs api` |
 | `pm2 logs api -f` | `docker logs api -f` |
 | `pm2 restart api` | `docker compose -f /var/www/docker-compose.prod.yml restart api` |
-| `pm2 startup` | `restart: always` in compose (already set) |
-
-### Check Logs
-```bash
-docker logs api --tail 50
-docker logs api -f        # live logs
-```
+| `pm2 stop api` | `docker compose -f /var/www/docker-compose.prod.yml stop api` |
+| `pm2 startup` | `restart: always` in compose — already set |
 
 ### Daily Development (no Docker needed)
+
 ```bash
 npm run start:dev    # NestJS hot reload
 npm run dev          # Next.js hot reload
 ```
 
-> Use Docker only for testing production build or deploying — not for daily development.
+> Use Docker only for testing the production build or deploying — not for daily development.
 
 ---
 
-## 🗺️ DevOps Roadmap
+## DevOps Roadmap
 
 ```
-✅ Done:    Docker + Docker Compose locally
-✅ Done:    VPS Deploy + Nginx + SSL + Cron
-✅ Done:    GitHub Actions CI/CD + Docker Hub
+Done:    Docker + Docker Compose locally
+Done:    VPS Deploy + Nginx + SSL + Cron
+Done:    GitHub Actions CI/CD + Docker Hub
 
-→ Next:     Health checks in docker-compose.prod.yml
-→ Next:     Build caching in GitHub Actions (faster CI)
-→ Then:     Kubernetes — orchestrate containers at scale
-→ Then:     Helm Charts — K8s package manager
-→ Then:     ArgoCD / Jenkins — advanced pipelines with rollback
-→ Later:    Prometheus + Grafana — monitoring and alerting
+Next:    Health checks in docker-compose.prod.yml
+Next:    Build caching in GitHub Actions (faster CI builds)
+Then:    Kubernetes — orchestrate containers at scale
+Then:    Helm Charts — K8s package manager
+Then:    ArgoCD / Jenkins — advanced CD pipelines with rollback
+Later:   Prometheus + Grafana — monitoring and alerting
 ```
 
 ---
