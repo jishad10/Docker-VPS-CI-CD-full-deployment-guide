@@ -6,6 +6,7 @@
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Docker Hub](https://img.shields.io/badge/Docker_Hub-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/)
 [![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/features/actions)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)](https://nginx.org/)
@@ -27,7 +28,7 @@ Covers every issue, every fix, and every decision made along the way.</p>
 - [Phase 2 — VPS Deploy](#-phase-2--vps-deploy)
 - [Phase 3 — GitHub Actions CI/CD](#-phase-3--github-actions-cicd)
 - [Production docker-compose.prod.yml](#-production-docker-composeprodyml)
-- [Real Issues and Fixes](#-real-issues--fixes)
+- [Real Issues and Fixes](#-real-issues-and-fixes)
 - [Quick Reference](#-quick-reference)
 - [DevOps Roadmap](#-devops-roadmap)
 
@@ -110,7 +111,7 @@ Dockerize locally    →     VPS Deploy           →     GitHub Actions CI/CD
 ### NestJS API
 
 <details>
-<summary><b>Dockerfile</b></summary>
+<summary><b>📄 Dockerfile</b></summary>
 
 ```dockerfile
 # ---- Stage 1: Build ----
@@ -147,7 +148,7 @@ CMD ["node", "dist/src/main.js"]
 </details>
 
 <details>
-<summary><b>.dockerignore — click to expand</b></summary>
+<summary><b>🚫 .dockerignore</b></summary>
 
 ```
 node_modules
@@ -170,7 +171,7 @@ coverage
 </details>
 
 <details>
-<summary><b>docker-compose.yml (local dev only) — click to expand</b></summary>
+<summary><b>🐙 docker-compose.yml — local dev only</b></summary>
 
 ```yaml
 services:
@@ -223,7 +224,7 @@ export default nextConfig;
 ```
 
 <details>
-<summary><b>Dockerfile — click to expand</b></summary>
+<summary><b>📄 Dockerfile</b></summary>
 
 ```dockerfile
 # Stage 1 — install dependencies
@@ -270,7 +271,7 @@ CMD ["node", "server.js"]
 </details>
 
 <details>
-<summary><b>.dockerignore — click to expand</b></summary>
+<summary><b>🚫 .dockerignore</b></summary>
 
 ```
 node_modules
@@ -288,7 +289,7 @@ README.md
 </details>
 
 <details>
-<summary><b>docker-compose.yml (local dev only) — click to expand</b></summary>
+<summary><b>🐙 docker-compose.yml — local dev only</b></summary>
 
 ```yaml
 services:
@@ -337,7 +338,7 @@ export default nextConfig;
 ```
 
 <details>
-<summary><b>Dockerfile — click to expand</b></summary>
+<summary><b>📄 Dockerfile</b></summary>
 
 ```dockerfile
 # Stage 1 — install dependencies
@@ -384,7 +385,7 @@ CMD ["node", "server.js"]
 </details>
 
 <details>
-<summary><b>.dockerignore — click to expand</b></summary>
+<summary><b>🚫 .dockerignore</b></summary>
 
 ```
 node_modules
@@ -402,7 +403,7 @@ README.md
 </details>
 
 <details>
-<summary><b>docker-compose.yml (local dev only) — click to expand</b></summary>
+<summary><b>🐙 docker-compose.yml — local dev only</b></summary>
 
 ```yaml
 services:
@@ -464,9 +465,16 @@ mkdir -p /var/www/client
 
 ### Step 4 — Create .env Files
 
+> `.env` files are never in git and never inside Docker images. Created manually once, stay permanently.
+> `NEXT_PUBLIC_` vars are already baked into the image at build time — no need to add them here.
+
+<details>
+<summary><b>🔑 /var/www/api/.env — example</b></summary>
+
 ```bash
 nano /var/www/api/.env
 ```
+
 ```env
 PORT=5000
 NODE_ENV=production
@@ -477,26 +485,40 @@ CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 FRONTEND_URL=https://yourdomain.com
 ADMIN_URL=https://admin.yourdomain.com
+# add all your other env vars here
 ```
+
+</details>
+
+<details>
+<summary><b>🔑 /var/www/admin/.env — example</b></summary>
 
 ```bash
 nano /var/www/admin/.env
 ```
+
 ```env
 NEXTAUTH_SECRET=your_secret
 NEXTAUTH_URL=https://admin.yourdomain.com
+# add all your other env vars here
 ```
+
+</details>
+
+<details>
+<summary><b>🔑 /var/www/client/.env — example</b></summary>
 
 ```bash
 nano /var/www/client/.env
 ```
+
 ```env
 NEXTAUTH_SECRET=your_secret
 NEXTAUTH_URL=https://yourdomain.com
+# add all your other env vars here
 ```
 
-> `.env` files are never in git and never inside Docker images. Created manually once, stay permanently.
-> `NEXT_PUBLIC_` vars are already baked into the image at build time — no need to add them here.
+</details>
 
 ### Step 5 — Login to Docker Hub on VPS
 ```bash
@@ -506,19 +528,32 @@ docker login
 ### Step 6 — Place docker-compose.prod.yml on VPS
 ```bash
 nano /var/www/docker-compose.prod.yml
-# paste content from the Production section below
+# paste content from the Production section below → Ctrl+X → Y → Enter
 ```
 
-### Step 7 — Pull and Start All Containers
+### Step 7 — Pull Images and Start All Containers
+
+After placing the `docker-compose.prod.yml` on the VPS, pull all images and start the containers:
+
 ```bash
 cd /var/www
+
+# Pull all images from Docker Hub
 docker compose -f docker-compose.prod.yml pull
+
+# Start all 3 containers in background
 docker compose -f docker-compose.prod.yml up -d
+
+# Verify all 3 are running
 docker ps
+
+# Check logs for each
 docker logs api
 docker logs admin
 docker logs client
 ```
+
+> From this point forward, containers restart automatically on crash or VPS reboot — no manual intervention needed.
 
 ### Step 8 — Configure Nginx
 ```bash
@@ -526,7 +561,7 @@ sudo apt install nginx -y
 ```
 
 <details>
-<summary><b>Nginx config for API — click to expand</b></summary>
+<summary><b>⚙️ Nginx config for API</b></summary>
 
 ```bash
 sudo nano /etc/nginx/sites-available/api
@@ -552,7 +587,7 @@ server {
 </details>
 
 <details>
-<summary><b>Nginx config for Admin — click to expand</b></summary>
+<summary><b>⚙️ Nginx config for Admin</b></summary>
 
 ```bash
 sudo nano /etc/nginx/sites-available/admin
@@ -578,7 +613,7 @@ server {
 </details>
 
 <details>
-<summary><b>Nginx config for Client — click to expand</b></summary>
+<summary><b>⚙️ Nginx config for Client</b></summary>
 
 ```bash
 sudo nano /etc/nginx/sites-available/client
@@ -662,7 +697,7 @@ Go to: **GitHub repo → Settings → Secrets and variables → Actions → New 
 These scripts live in `/root/` and are called automatically by GitHub Actions on every push to `main`:
 
 <details>
-<summary><b>~/deploy-api.sh — click to expand</b></summary>
+<summary><b>📜 ~/deploy-api.sh</b></summary>
 
 ```bash
 nano ~/deploy-api.sh
@@ -679,7 +714,7 @@ docker image prune -f
 </details>
 
 <details>
-<summary><b>~/deploy-admin.sh — click to expand</b></summary>
+<summary><b>📜 ~/deploy-admin.sh</b></summary>
 
 ```bash
 nano ~/deploy-admin.sh
@@ -696,7 +731,7 @@ docker image prune -f
 </details>
 
 <details>
-<summary><b>~/deploy-client.sh — click to expand</b></summary>
+<summary><b>📜 ~/deploy-client.sh</b></summary>
 
 ```bash
 nano ~/deploy-client.sh
@@ -721,7 +756,7 @@ chmod +x ~/deploy-api.sh ~/deploy-admin.sh ~/deploy-client.sh
 Create `.github/workflows/deploy.yml` in each repo:
 
 <details>
-<summary><b>api-repo — .github/workflows/deploy.yml — click to expand</b></summary>
+<summary><b>⚡ api-repo — .github/workflows/deploy.yml</b></summary>
 
 ```yaml
 name: Deploy API
@@ -763,7 +798,7 @@ jobs:
 </details>
 
 <details>
-<summary><b>admin-repo — .github/workflows/deploy.yml — click to expand</b></summary>
+<summary><b>⚡ admin-repo — .github/workflows/deploy.yml</b></summary>
 
 ```yaml
 name: Deploy Admin
@@ -808,7 +843,7 @@ jobs:
 </details>
 
 <details>
-<summary><b>client-repo — .github/workflows/deploy.yml — click to expand</b></summary>
+<summary><b>⚡ client-repo — .github/workflows/deploy.yml</b></summary>
 
 ```yaml
 name: Deploy Client
