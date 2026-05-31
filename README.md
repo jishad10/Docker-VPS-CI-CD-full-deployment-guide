@@ -110,7 +110,7 @@ Dockerize locally    →     VPS Deploy           →     GitHub Actions CI/CD
 ### NestJS API
 
 <details>
-<summary><b>Dockerfile — click to expand</b></summary>
+<summary><b>Dockerfile</b></summary>
 
 ```dockerfile
 # ---- Stage 1: Build ----
